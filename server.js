@@ -26,6 +26,8 @@ const PORT = process.env.PORT || 3000;
 const QR_TTL = 15000;
 
 app.use(express.json({ limit: '10mb' }));
+app.use('/vendor', express.static(path.join(__dirname, 'node_modules', 'qrcodejs')));
+app.use('/vendor', express.static(path.join(__dirname, 'node_modules', 'jsqr', 'dist')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 function randomToken(length = 8) {

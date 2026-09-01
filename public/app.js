@@ -294,7 +294,7 @@ async function ensureJsQr() {
         }
 
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+        script.src = '/vendor/jsQR.js';
         script.setAttribute('data-jsqr-loader', 'true');
         script.onload = () => resolve(window.jsQR);
         script.onerror = () => reject(new Error('QR loader failed'));
