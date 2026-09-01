@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Attendance Management System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="/style.css" />
+</head>
+
+<body>
+    <div class="container">
+        <div class="topbar">
+            <div>
+                <h1>Attendance Management System</h1>
+                <div class="subtitle">Faculty + student attendance system with live session tracking</div>
+            </div>
+            <button id="logout-btn" class="btn secondary" hidden>Logout</button>
+        </div>
+
+        <section id="auth-view" class="auth-shell">
+            <div class="segmented">
+                <button class="is-active" data-auth-mode="login">Login</button>
+                <button data-auth-mode="register">Register</button>
+            </div>
+            <div id="auth-mode-label" class="muted auth-mode-label">Login</div>
+
+            <form id="auth-form">
+                <div class="field name-field hidden" id="name-field">
+                    <label for="name">Full name</label>
+                    <input id="name" name="name" placeholder="Aarav Sharma" />
+                </div>
+
+                <div class="field">
+                    <label for="email">Email</label>
+                    <input id="email" name="email" type="email" placeholder="name@college.edu" required />
+                </div>
+
+                <div class="field">
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" placeholder="Your password" required />
+                </div>
+
+                <div class="field">
+                    <label for="role">Role</label>
+                    <select id="role" name="role">
+                        <option value="student">Student</option>
+                        <option value="faculty">Faculty</option>
+                    </select>
+                </div>
+
+                <div class="field" id="student-id-field">
+                    <label for="studentId">Student ID</label>
+                    <input id="studentId" name="studentId" placeholder="21CS0142" />
+                </div>
+
+                <button id="auth-submit" type="submit" class="btn full-width-btn">Login</button>
+                <div id="auth-message" class="auth-message"></div>
+            </form>
+        </section>
+
+        <section id="main-app" hidden>
+            <div id="faculty-view" class="dashboard-layout" hidden>
+                <div class="panel-section">
+                    <div class="grid2">
+                        <div class="field">
+                            <label for="course">Course</label>
+                            <input id="course" value="CS301 - Operating Systems" />
+                        </div>
+                        <div class="field">
+                            <label for="room">Room</label>
+                            <input id="room" value="Block C - Room 214" />
+                        </div>
+                    </div>
+                    <button id="start-session" class="btn">Start Session</button>
+                </div>
+
+                <div class="panel-section">
+                    <div class="panel-section-header">
+                        <div>
+                            <h2 id="live-course">Course</h2>
+                            <div id="live-room" class="muted">Room</div>
+                        </div>
+                        <button id="end-session" class="btn warn">End Session</button>
+                    </div>
+
+                    <div class="live-layout">
+                        <div class="qr-card">
+                            <div id="qr-holder"></div>
+                            <div class="session-note">
+                                Session <strong id="session-short">-</strong><br />Refreshes every 15s
+                            </div>
+                        </div>
+
+                        <div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>ID</th>
+                                        <th>Time</th>
+                                        <th>Match</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="register-body">
+                                    <tr>
+                                        <td colspan="5" class="muted">No check-ins yet.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="student-view" class="dashboard-layout" hidden>
+                <div class="panel-section">
+                    <h2 id="student-welcome">Student</h2>
+                    <div id="student-info" class="muted"></div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="steps">
+                        <div id="step-1" class="step current">1<br />Scan</div>
+                        <div id="step-2" class="step">2<br />Selfie</div>
+                        <div id="step-3" class="step">3<br />Submit</div>
+                    </div>
+
+                    <div id="scan-stage" class="camera-panel">
+                        <video id="scan-video" autoplay muted></video>
+                        <canvas id="scan-canvas" hidden></canvas>
+                        <button id="open-scan-camera" class="btn">Open Camera</button>
+                        <div id="scan-message" class="muted scan-message">Point the camera at the professor's QR code.
+                        </div>
+                    </div>
+
+                    <div id="selfie-stage" class="camera-panel hidden">
+                        <video id="selfie-video" autoplay muted></video>
+                        <canvas id="selfie-canvas" hidden></canvas>
+                        <button id="capture-selfie" class="btn">Capture & Submit</button>
+                        <div id="selfie-message" class="muted selfie-message">Look directly at the camera and submit
+                            your attendance.</div>
+                    </div>
+
+                    <div id="result-stage" class="result-stage" hidden></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+
+</html>

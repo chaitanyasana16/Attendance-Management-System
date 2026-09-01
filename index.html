@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attendance Management System</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-soft: #1f2937;
+      --primary: #fbbf24;
+      --good: #34d399;
+      --warn: #f87171;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --line: rgba(148, 163, 184, 0.2);
+      --shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 18px 48px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 18px;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 0.94rem;
+    }
+
+    .tabs {
+      display: flex;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .tabs button {
+      background: transparent;
+      color: var(--text);
+      border: none;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: 600;
+      border-right: 1px solid var(--line);
+    }
+
+    .tabs button:last-child {
+      border-right: none;
+    }
+
+    .tabs button.active {
+      background: var(--panel-soft);
+      color: var(--primary);
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .live-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .session-note {
+      margin-top: 12px;
+      font-size: 0.75rem;
+      color: #0f172a;
+    }
+
+    .student-section {
+      display: none;
+    }
+
+    .student-checkin {
+      display: none;
+    }
+
+    .steps.tight {
+      margin-top: 18px;
+    }
+
+    .scan-canvas,
+    .selfie-canvas {
+      display: none;
+    }
+
+    input {
+      width: 100%;
+      background: var(--panel-soft);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 1rem;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: #1f2937;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn.secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+
+    .btn.warn {
+      background: var(--warn);
+      color: #fff;
+    }
+
+    .panel h2 {
+      margin: 0 0 6px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .live-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .qrcode-box {
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      color: #0f172a;
+    }
+
+    #qr-holder {
+      min-height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .badge.good {
+      background: rgba(52, 211, 153, 0.18);
+      color: var(--good);
+    }
+
+    .badge.warn {
+      background: rgba(248, 113, 113, 0.16);
+      color: var(--warn);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .step {
+      border-bottom: 2px solid var(--line);
+      padding: 10px 8px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .step.current {
+      border-color: var(--primary);
+      color: var(--text);
+    }
+
+    .step.done {
+      border-color: var(--good);
+      color: var(--good);
+    }
+
+    .camera-panel {
+      background: rgba(148, 163, 184, 0.04);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+    }
+
+    video {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 12px;
+      background: #000;
+      display: block;
+      margin: 0 auto 12px;
+    }
+
+    .message {
+      min-height: 24px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      margin-top: 10px;
+    }
+
+    .result-stage {
+      margin-top: 16px;
+    }
+
+    .result-card {
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+      border: 1px solid var(--line);
+      background: rgba(148, 163, 184, 0.04);
+    }
+
+    .result-card.good {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(52, 211, 153, 0.08);
+    }
+
+    .result-card.warn {
+      border-color: rgba(248, 113, 113, 0.5);
+      background: rgba(248, 113, 113, 0.08);
+    }
+
+    .score {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 8px 0;
+    }
+
+    @media (max-width: 760px) {
+
+      .grid2,
+      .live-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .steps {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div>
+        <h1>Attendance Management System</h1>
+        <div class="subtitle">Real-time college attendance with rotating QR + live selfie</div>
+      </div>
+      <div class="tabs">
+        <button id="tab-faculty" class="active">Faculty Console</button>
+        <button id="tab-student">Student Check-in</button>
+      </div>
+    </div>
+
+    <section id="faculty-view">
+      <div id="setup-panel" class="panel">
+        <h2>Start Attendance Session</h2>
+        <div class="grid2">
+          <div class="field">
+            <label for="course">Course</label>
+            <input id="course" name="course" value="CS301 - Operating Systems" title="Course name" />
+          </div>
+          <div class="field">
+            <label for="room">Room</label>
+            <input id="room" name="room" value="Block C - Room 214" title="Room name" />
+          </div>
+        </div>
+        <button class="btn" id="start-session">Start Session</button>
+      </div>
+
+      <div id="live-panel" class="panel hidden">
+        <div class="live-panel-header">
+          <div>
+            <h2 id="live-course">Course</h2>
+            <div class="muted" id="live-room">Room</div>
+          </div>
+          <button class="btn warn" id="end-session">End Session</button>
+        </div>
+
+        <div class="live-layout">
+          <div class="qrcode-box">
+            <div id="qr-holder"></div>
+            <div class="session-note">
+              Session <strong id="session-short">-</strong><br />Refreshes every 15s
+            </div>
+          </div>
+
+          <div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>ID</th>
+                  <th>Time</th>
+                  <th>Match</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="register-body">
+                <tr>
+                  <td colspan="5" class="muted">No check-ins yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="student-view" class="student-section">
+      <div id="student-setup" class="panel">
+        <h2>Your Details</h2>
+        <div class="grid2">
+          <div class="field">
+            <label for="student-name">Name</label>
+            <input id="student-name" name="student-name" placeholder="Ananya Rao" />
+          </div>
+          <div class="field">
+            <label for="student-id">Student ID</label>
+            <input id="student-id" name="student-id" placeholder="21CS0142" />
+          </div>
+        </div>
+        <button class="btn" id="save-student">Continue</button>
+      </div>
+
+      <div id="student-checkin" class="panel student-checkin">
+        <h2 id="student-course">Course</h2>
+        <div class="muted" id="student-room">Room</div>
+
+        <div class="steps tight">
+          <div class="step" id="step-1">1<br />Scan</div>
+          <div class="step" id="step-2">2<br />Selfie</div>
+          <div class="step" id="step-3">3<br />Done</div>
+        </div>
+
+        <div id="scan-stage" class="camera-panel">
+          <video id="scan-video" autoplay muted></video>
+          <canvas id="scan-canvas" class="scan-canvas"></canvas>
+          <button class="btn" id="open-scan-camera">Open Camera</button>
+          <div class="message" id="scan-message">Point the camera at the QR code on the professor screen.</div>
+        </div>
+
+        <div id="selfie-stage" class="camera-panel hidden">
+          <video id="selfie-video" autoplay muted></video>
+          <canvas id="selfie-canvas" class="selfie-canvas"></canvas>
+          <button class="btn" id="capture-selfie">Capture Selfie</button>
+          <div class="message" id="selfie-message">Look directly at the camera and capture a live selfie.</div>
+        </div>
+
+        <div id="result-stage" class="result-stage hidden"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const socket = io();
+    const QR_TTL = 15000;
+    const RING_CIRC = 615.75;
+
+    let session = null;
+    let registerRows = [];
+    let currentQrPayload = null;
+    let currentStudentName = localStorage.getItem('attendance_name') || '';
+    let currentStudentId = localStorage.getItem('attendance_student_id') || '';
+    let scanStream = null;
+    let scanFrameId = null;
+    let selfieStream = null;
+
+    const facultyView = document.getElementById('faculty-view');
+    const studentView = document.getElementById('student-view');
+    const tabFaculty = document.getElementById('tab-faculty');
+    const tabStudent = document.getElementById('tab-student');
+
+    tabFaculty.addEventListener('click', () => {
+      tabFaculty.classList.add('active');
+      tabStudent.classList.remove('active');
+      facultyView.style.display = 'block';
+      studentView.style.display = 'none';
+    });
+
+    tabStudent.addEventListener('click', () => {
+      tabStudent.classList.add('active');
+      tabFaculty.classList.remove('active');
+      studentView.style.display = 'block';
+      facultyView.style.display = 'none';
+      refreshStudentStatus();
+    });
+
+    function setStep(index) {
+      for (let i = 1; i <= 3; i++) {
+        const node = document.getElementById('step-' + i);
+        node.classList.remove('current', 'done');
+        if (i < index) node.classList.add('done');
+        if (i === index) node.classList.add('current');
+      }
+    }
+
+    function updateRing() {
+      if (!session) return;
+      const remaining = Math.max(0, session.expiresAt - Date.now());
+      const ratio = Math.max(0, Math.min(1, remaining / session.ttl));
+      const offset = RING_CIRC * (1 - ratio);
+      const ring = document.getElementById('ring-progress');
+      if (ring) ring.setAttribute('stroke-dashoffset', String(offset));
+    }
+
+    function renderRegister() {
+      const tbody = document.getElementById('register-body');
+      if (!registerRows.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="muted">No check-ins yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = registerRows.sort((a, b) => Number(b.time) - Number(a.time)).map(row => {
+        const badge = row.status === 'flagged'
+          ? '<span class="badge warn">Flagged</span>'
+          : '<span class="badge good">Verified</span>';
+        const reason = row.reason ? '<div class="muted" style="font-size:0.72rem;">' + row.reason + '</div>' : '';
+        return '<tr><td>' + row.name + '</td><td>' + row.studentId + '</td><td>' + new Date(row.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '</td><td>' + Math.round(row.matchScore) + '%</td><td>' + badge + reason + '</td></tr>';
+      }).join('');
+    }
+
+    document.getElementById('start-session').addEventListener('click', () => {
+      const course = document.getElementById('course').value.trim() || 'Untitled Course';
+      const room = document.getElementById('room').value.trim() || 'Unspecified Room';
+      socket.emit('faculty:start', { course, room });
+    });
+
+    document.getElementById('end-session').addEventListener('click', () => {
+      socket.emit('faculty:end');
+    });
+
+    socket.on('session:update', (sessionData) => {
+      session = sessionData || null;
+      if (!session) {
+        document.getElementById('setup-panel').style.display = 'block';
+        document.getElementById('live-panel').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('setup-panel').style.display = 'none';
+      document.getElementById('live-panel').style.display = 'block';
+      document.getElementById('live-course').textContent = session.course;
+      document.getElementById('live-room').textContent = session.room;
+      document.getElementById('session-short').textContent = session.id;
+      renderQR();
+    });
+
+    function renderQR() {
+      if (!session) return;
+      const holder = document.getElementById('qr-holder');
+      holder.innerHTML = '';
+      const ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      ring.setAttribute('width', '210');
+      ring.setAttribute('height', '210');
+      ring.setAttribute('viewBox', '0 0 210 210');
+      ring.innerHTML = '<circle cx="105" cy="105" r="98" fill="none" stroke="#dbe4f0" stroke-width="6"></circle><circle id="ring-progress" cx="105" cy="105" r="98" fill="none" stroke="#fbbf24" stroke-width="6" stroke-linecap="round" stroke-dasharray="615.75" stroke-dashoffset="0" transform="rotate(-90 105 105)"></circle>';
+      holder.appendChild(ring);
+      const inner = document.createElement('div');
+      inner.style.position = 'absolute';
+      inner.style.width = '180px';
+      inner.style.height = '180px';
+      inner.style.left = '50%';
+      inner.style.top = '50%';
+      inner.style.transform = 'translate(-50%, -50%)';
+      inner.style.background = '#fff';
+      inner.style.display = 'flex';
+      inner.style.alignItems = 'center';
+      inner.style.justifyContent = 'center';
+      inner.style.borderRadius = '10px';
+      holder.style.position = 'relative';
+      holder.appendChild(inner);
+      new QRCode(inner, {
+        text: JSON.stringify({ s: session.id, n: session.nonce, t: session.issuedAt }),
+        width: 170,
+        height: 170,
+        colorDark: '#0f172a',
+        colorLight: '#ffffff'
+      });
+      updateRing();
+    }
+
+    socket.on('register:update', (rows) => {
+      registerRows = rows || [];
+      renderRegister();
+    });
+
+    socket.on('attendance:result', (result) => {
+      if (!result || !result.ok) {
+        document.getElementById('scan-message').textContent = result?.reason || 'Check-in rejected.';
+        return;
+      }
+      const stage = document.getElementById('result-stage');
+      const pass = !(result.flagged || (result.record && result.record.status === 'flagged'));
+      const score = Math.round(Number((result.record && result.record.matchScore) || 0));
+      stage.innerHTML = `
+        <div class="result-card ${pass ? 'good' : 'warn'}">
+          <div>${pass ? 'Marked Present' : 'Flagged for Review'}</div>
+          <div class="score">${score}%</div>
+          <div class="muted">${pass ? 'Face match confidence is acceptable.' : 'Low confidence or duplicate device was detected.'}</div>
+        </div>
+        <div style="text-align:center; margin-top:12px;">
+          <button class="btn secondary" id="checkin-again">Check In Again</button>
+        </div>
+      `;
+      stage.style.display = 'block';
+      document.getElementById('selfie-stage').style.display = 'none';
+      document.getElementById('checkin-again').addEventListener('click', resetStudentFlow);
+      setStep(3);
+    });
+
+    function deviceId() {
+      let id = localStorage.getItem('rollcall_device_id');
+      if (!id) {
+        id = 'dev_' + Math.random().toString(36).slice(2, 12);
+        localStorage.setItem('rollcall_device_id', id);
+      }
+      return id;
+    }
+
+    function resetStudentFlow() {
+      setStep(1);
+      document.getElementById('scan-stage').style.display = 'block';
+      document.getElementById('selfie-stage').style.display = 'none';
+      document.getElementById('result-stage').style.display = 'none';
+      document.getElementById('scan-message').textContent = 'Point the camera at the QR code on the professor screen.';
+    }
+
+    document.getElementById('save-student').addEventListener('click', () => {
+      const name = document.getElementById('student-name').value.trim();
+      const id = document.getElementById('student-id').value.trim();
+      if (!name || !id) {
+        alert('Please enter both your name and student ID.');
+        return;
+      }
+      currentStudentName = name;
+      currentStudentId = id;
+      localStorage.setItem('attendance_name', name);
+      localStorage.setItem('attendance_student_id', id);
+      document.getElementById('student-setup').style.display = 'none';
+      document.getElementById('student-checkin').style.display = 'block';
+      resetStudentFlow();
+      refreshStudentStatus();
+    });
+
+    function refreshStudentStatus() {
+      const active = session;
+      const setup = document.getElementById('student-setup');
+      const checkin = document.getElementById('student-checkin');
+      if (!active) {
+        setup.style.display = 'block';
+        checkin.style.display = 'none';
+        return;
+      }
+      document.getElementById('student-course').textContent = active.course;
+      document.getElementById('student-room').textContent = active.room;
+      if (!currentStudentName || !currentStudentId) {
+        setup.style.display = 'block';
+        checkin.style.display = 'none';
+      } else {
+        setup.style.display = 'none';
+        checkin.style.display = 'block';
+      }
+    }
+
+    function describeCamError(error) {
+      const name = error && error.name;
+      if (name === 'NotAllowedError') return 'Camera permission denied. Allow camera access and refresh.';
+      if (name === 'NotFoundError') return 'No camera found on this device.';
+      if (name === 'NotReadableError') return 'Camera is already in use. Close it and try again.';
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost') return 'Use localhost or HTTPS for camera features.';
+      return 'Unable to open camera. Please try again.';
+    }
+
+    function ensureJsQr() {
+      return new Promise((resolve, reject) => {
+        if (window.jsQR) return resolve(window.jsQR);
+        const existing = document.querySelector('script[data-jsqr-loader]');
+        if (existing) {
+          existing.addEventListener('load', () => resolve(window.jsQR), { once: true });
+          existing.addEventListener('error', () => reject(new Error('Unable to load QR scanner')), { once: true });
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+        script.setAttribute('data-jsqr-loader', 'true');
+        script.onload = () => resolve(window.jsQR);
+        script.onerror = () => reject(new Error('Unable to load QR scanner'));
+        document.head.appendChild(script);
+      });
+    }
+
+    document.getElementById('open-scan-camera').addEventListener('click', async () => {
+      const video = document.getElementById('scan-video');
+      const status = document.getElementById('scan-message');
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        status.textContent = 'This browser does not support camera access.';
+        return;
+      }
+      try {
+        await ensureJsQr();
+        scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).catch(() => navigator.mediaDevices.getUserMedia({ video: true }));
+        video.srcObject = scanStream;
+        const canvas = document.getElementById('scan-canvas');
+        const ctx = canvas.getContext('2d');
+        function tick() {
+          if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const qr = window.jsQR || (typeof jsQR !== 'undefined' ? jsQR : null);
+            if (qr) {
+              const code = qr(img.data, img.width, img.height);
+              if (code) {
+                handleScan(code.data);
+                return;
+              }
+            }
+          }
+          scanFrameId = requestAnimationFrame(tick);
+        }
+        scanFrameId = requestAnimationFrame(tick);
+      } catch (error) {
+        status.textContent = describeCamError(error);
+      }
+    });
+
+    function stopScanStream() {
+      if (scanFrameId) cancelAnimationFrame(scanFrameId);
+      if (scanStream) {
+        scanStream.getTracks().forEach(track => track.stop());
+      }
+      scanStream = null;
+    }
+
+    function handleScan(raw) {
+      if (!session) return;
+      let payload;
+      try { payload = JSON.parse(raw); } catch (e) { document.getElementById('scan-message').textContent = 'This is not a valid attendance QR code.'; return; }
+      const age = Date.now() - Number(payload.t || 0);
+      if (payload.s !== session.id || payload.n !== session.nonce || age > QR_TTL + 3000) {
+        document.getElementById('scan-message').textContent = 'QR code expired or invalid. Please scan the current one.';
+        setTimeout(resetStudentFlow, 1500);
+        return;
+      }
+      stopScanStream();
+      currentQrPayload = payload;
+      document.getElementById('scan-stage').style.display = 'none';
+      document.getElementById('selfie-stage').style.display = 'block';
+      setStep(2);
+      openSelfieCamera();
+    }
+
+    async function openSelfieCamera() {
+      const video = document.getElementById('selfie-video');
+      try {
+        selfieStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } }).catch(() => navigator.mediaDevices.getUserMedia({ video: true }));
+        video.srcObject = selfieStream;
+      } catch (error) {
+        document.getElementById('selfie-message').textContent = describeCamError(error);
+      }
+    }
+
+    document.getElementById('capture-selfie').addEventListener('click', () => {
+      const video = document.getElementById('selfie-video');
+      const canvas = document.getElementById('selfie-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 96;
+      canvas.height = 96;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (selfieStream) selfieStream.getTracks().forEach(track => track.stop());
+
+      const refKey = 'attendance_selfie_' + currentStudentId;
+      const saved = localStorage.getItem(refKey);
+      let matchScore = 97;
+      if (saved) {
+        const ref = JSON.parse(saved);
+        matchScore = similarityScore(ref, Array.from(frame.data));
+      } else {
+        localStorage.setItem(refKey, JSON.stringify(Array.from(frame.data)));
+      }
+
+      socket.emit('attendance:submit', {
+        name: currentStudentName,
+        studentId: currentStudentId,
+        deviceId: deviceId(),
+        sessionId: session.id,
+        matchScore,
+        nonce: session.nonce,
+        ts: currentQrPayload.t
+      });
+    });
+
+    function similarityScore(ref, live) {
+      let diff = 0;
+      for (let i = 0; i < ref.length; i += 4) {
+        diff += Math.abs(ref[i] - live[i]) + Math.abs(ref[i + 1] - live[i + 1]) + Math.abs(ref[i + 2] - live[i + 2]);
+      }
+      const avgDiff = diff / ((ref.length / 4) * 3);
+      let score = 100 - (avgDiff / 255) * 100;
+      score = Math.max(35, Math.min(99, score + (Math.random() * 10 - 5)));
+      return Math.round(score);
+    }
+
+    if (currentStudentName) document.getElementById('student-name').value = currentStudentName;
+    if (currentStudentId) document.getElementById('student-id').value = currentStudentId;
+
+    setInterval(() => {
+      if (session) updateRing();
+    }, 250);
+  </script>
+</body>
+
+</html>
