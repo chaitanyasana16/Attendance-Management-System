@@ -56,8 +56,17 @@ function showMessage(node, message, isError = false) {
 function updateAuthFields() {
     const isRegister = appState.selectedTab === 'register';
     const role = elements.roleField.value;
-    elements.nameField.style.display = isRegister ? 'flex' : 'none';
-    elements.studentIdField.style.display = role === 'student' ? 'flex' : 'none';
+
+    if (elements.nameField) {
+        elements.nameField.hidden = !isRegister;
+        elements.nameField.style.display = isRegister ? 'flex' : 'none';
+    }
+
+    if (elements.studentIdField) {
+        const showStudentId = isRegister && role === 'student';
+        elements.studentIdField.hidden = !showStudentId;
+        elements.studentIdField.style.display = showStudentId ? 'flex' : 'none';
+    }
 }
 
 function setAuthMode(mode) {
